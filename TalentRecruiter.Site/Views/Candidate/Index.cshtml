@@ -1,0 +1,235 @@
+﻿@model TalentRecruiter.Site.Models.TechnologyDetailViewModel
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <table id="assets-data-table" class="table table-striped table-bordered" style="width:100%;">
+        </table>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-10">
+        <button type="button" class="btn btn-info" id="bttnSeleccionar">Seleccionar Candidatos</button>
+        <button type="button" class="btn btn-link" id="bttnBack">Atras</button>
+    </div>
+</div>
+
+<!-- Modal para los mensajes de error -->
+<div class="modal fade" id="modalMessage" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Info</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="pmesage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Ok</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Objetos para guardar los datos seleccionados de la vista anterior TechnologyDetail  -->
+@Html.HiddenFor(model => model.TechnologyOrderId)
+@Html.HiddenFor(model => model.TechnologyDetailDescription)
+@Html.HiddenFor(model => model.TechnologyDetailId)
+
+@Html.HiddenFor(model => model.TechnologyId)
+@Html.HiddenFor(model => model.TechnologyDescription)
+
+@section Scripts
+{
+
+    <script type="text/javascript">
+        var candidatesVM;
+        var tableVM;
+
+        $(document).ready(function ()
+        {
+
+            //Elimina los candidatos seleccionados en el local storage si es que existem
+            CleaningLocalStorageCandidates();
+            //Inicia la grilla de candidatos
+            candidatesVM = {
+                 table: null,
+                init: function () {
+                    table = $('#assets-data-table').DataTable({
+                        "bPaginate": false,
+                        "bFilter": false,
+                        "serverSide": true,
+                        "processing": true,
+                        "ajax": {
+                            "url": "@Url.Action("GetCandidatesFromByTechnology", "Candidate")",
+                            "type": "POST",
+                            "data": function (data) {
+                                //Identificador de tecnologia numero impar o par
+                                var technologyOrderId = $("#TechnologyOrderId").val();
+                                //Tecnologia seleccionada en la vista Technology
+                                var technologyId = $("#TechnologyId").val();
+                                //Descripcion de la tecnologia seleccionada en la vista TechnologyDetail
+                                var technologyDetailDescription = $("#TechnologyDetailDescription").val();
+                                data.TechnologyOrderId = technologyOrderId;
+                                data.TechnologyId = technologyId;
+                                data.TechnologyDetailDescription = technologyDetailDescription;
+                            }
+                        },
+                        select: {
+                            style: 'multi'
+                        },
+
+                        "columns": [
+                            {
+                                "orderable": false,
+                                "title": "Seleccionar",
+                                "data": "CandidateId",
+                                "className": 'select-checkbox',
+                                "targets": 0,
+                                "render": function (data, type, full, meta) {
+                                    return "";
+                                }
+                            },
+                            { "title": "Id", "data": "CandidateId", "searchable": false },
+                            { "title": "Name", "data": "CandidateName", "searchable": false },
+                            { "title": "User Name", "data": "UserName", "searchable": false },
+                            { "title": "Email", "data": "CandidateEmail", "searchable": false },
+                            { "title": "Street", "data": "Street", "searchable": false },
+                            { "title": "Suite", "data": "Suite", "searchable": false },
+                            { "title": "City", "data": "City", "searchable": false },
+                            { "title": "Zip Code", "data": "ZipCode", "searchable": false },
+                            { "title": "Geo Lat", "data": "GeoLat", "searchable": false },
+                            { "title": "Geo Ing", "data": "GeoIng", "searchable": false },
+                            { "title": "Phone", "data": "Phone", "searchable": false }
+                        ]
+
+                    });
+
+                    tableVM = table;
+                },
+
+                refresh: function () {
+                    table.ajax.reload();
+                }
+            }
+            //Inicia la carga de la grilla
+            candidatesVM.init();
+            //Evento boton candidatos seleccion
+            EventCandidatesSelect();
+            //Redirecciona a la pagina anterior
+            EventBackPage();
+
+        })
+
+        ///Elimina los candidatos seleccionados guardados en el local storage si es que existen
+        function CleaningLocalStorageCandidates()
+        {
+            localStorage.removeItem("candidates");
+        }
+
+        /// Guarda los candidatos seleccionados en la grilla
+        function SaveCandidatesSelec(candidates)
+        {
+            localStorage.setItem("candidates", JSON.stringify(candidates));
+        }
+
+        ///Evento Boton seleccionar al despues se seleccionar candidatos
+
+        function EventCandidatesSelect()
+        {
+             $("#bttnSeleccionar").click(function ()
+            {
+                var candidatesSelect = tableVM.rows({ selected: true }).data();
+
+                if (candidatesSelect.length == 0)
+                {
+                    ShowMessageErrorModal("No ha seleccionado ningun candidato");
+                    return;
+                 }
+
+                 var candidates = CreateCandidateInterview(candidatesSelect);
+
+                 //Guarda los candidatos en el local storage
+                 SaveCandidatesSelec(candidates);
+
+                 //Redirecciona a la vista de creacion de entrevistas
+                 RedirectToInterview();
+
+            });
+        }
+
+        //Convierte un arreglo de candidatos seleccionados
+        //a un candidatos con posibilidad de entrevista
+        // y retorna un nuevo array
+        function CreateCandidateInterview(candidatesSelect)
+        {
+            var candidates = [];
+            var technologyDetailId = $("#TechnologyDetailId").val();
+            var technologyDetailDescription = $("#TechnologyDetailDescription").val();
+
+            $.each(candidatesSelect, function (key, value) {
+                var candidate = {};
+                candidate.InterviewId = 0;
+                candidate.CandidateId = value.CandidateId;
+                candidate.TechnologyDetailId = technologyDetailId;
+                candidate.InterviewStartTime = new Date();
+                candidate.InterviewFinalTime = new Date();
+                candidate.TypeInterviewId = 0;
+                candidate.Observation = "";
+                candidate.TechnologyDetailDescription = technologyDetailDescription;
+                candidate.CandidateName = value.CandidateName;
+                candidate.UserName = value.UserName;
+                candidate.CandidateEmail = value.CandidateEmail;
+                candidate.Street = value.Street;
+                candidate.Suite = value.Suite;
+                candidate.City = value.City;
+                candidate.ZipCode = value.ZipCode;
+                candidate.GeoLat = value.GeoLat;
+                candidate.GeoIng = value.GeoIng;
+                candidate.Phone = value.Phone;
+                candidate.Website = value.Website;
+                candidate.CompanyName = value.CompanyName;
+                candidate.CompanyCatchPhrase = value.CompanyCatchPhrase;
+                candidate.CompanyBs = value.CompanyBs;
+                candidates.push(candidate);
+            });
+
+            return candidates;
+        }
+
+        ///Redirecciona a la vista anterior TechnologyDetail
+        function EventBackPage()
+        {
+            $("#bttnBack").click(function ()
+            {
+                var technologyId = $("#TechnologyId").val();
+                window.location = "@Url.Action("Index", "TechnologyDetail")" + "?technologyId=" + technologyId ;
+            });
+        }
+
+        ///Muesta un mensaje de error en una ventana modal
+        function ShowMessageErrorModal(mensaje)
+        {
+            $("#pmesage").html(mensaje);
+            $("#modalMessage").modal()
+        }
+
+        ///Limpia el mensaje de error de la ventana modal
+        function CleaningErrorModal()
+        {
+            ShowMessageErrorModal("");
+        }
+
+        ///Redirecciona a la vista de crecion de entrevistas
+        function RedirectToInterview()
+        {
+            window.location = "@Url.Action("Index", "Interview")";
+        }
+    </script>
+}

@@ -1,0 +1,265 @@
+﻿@model TalentRecruiter.Site.Models.SearchInterviewViewModel
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <table id="assets-data-table" class="table table-striped table-bordered table-responsive nowrap" style="width:100%;">
+        </table>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-10">
+        <button type="button" class="btn btn-success" id="bttnSearchModal">Buscar</button>
+    </div>
+</div>
+
+<!-- Modal mensajes -->
+<div class="modal fade" id="modalMessage" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Info</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="pmesage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Ok</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para guardar la entrevista -->
+
+<div id="modalInterView" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalCenterTitle">InterView Search</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-horizontal">
+
+                    <form name="interview" id="interview">
+
+                        <div class="form-group">
+
+                            <label for="InterviewStartTime" class="control-label col-md-2">Interview Date</label>
+
+                            <div class="col-md-10">
+                                <input type="text" class="form-control" name="DateInterView" id="DateInterView" required />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="TypeInterviewId" class="control-label col-md-2">Type InterView</label>
+                            <div class="col-md-10">
+                                <select id="TypeInterviewId" name="TypeInterviewId" class="form-control" required></select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="submit" id="bttnSearch" class="btn btn-primary">Search</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+
+    <script type="text/javascript">
+        var interviewVM;
+        var tableVM;
+
+        $(document).ready(function () {
+
+            ///Incializa eventos en el formulario
+            InitFormInterViewModal();
+
+            ///VM para entrevistas
+            interviewVM = {
+                table :null,
+                init: function () {
+                    table = $('#assets-data-table').DataTable({
+                        "bPaginate": false,
+                        "bFilter": false,
+                        "serverSide": true,
+                        "processing": true,
+                        "ajax": {
+                            "type": "POST",
+                            "url": "@Url.Action("SearchInterView", "InterView")",
+                            "data": function (data) {
+                                var strDate = $('#DateInterView').val();
+                                var date = null;
+                                var dateIso = null;
+                                if (strDate != "")
+                                {
+                                    date = moment(strDate, 'YYYY-MM-DD').toDate();
+                                    dateIso = moment(date).toISOString();
+                                }
+
+                                data.DateInterView = strDate == "" ? null : dateIso;
+                                data.TypeInterviewId = $('#TypeInterviewId').val();
+                            }
+                        },
+                        select: {
+                            style: 'os',
+                            selector: 'td:first-child'
+                        },
+                        "columns": [
+                            { "title": "Id", "data": "InterviewId", "searchable": false },
+                            { "title": "Type", "data": "InterviewType.TypeInterviewDescripction", "searchable": false },
+                            {
+                                "title": "Start Time", "data": "InterviewStartTime", "searchable": false, "render": function (data, type, full, meta) {
+                                    var strDate = StringToDate(data)
+                                    return moment(strDate).format("YYYY-MM-DD HH:mm");
+                                }
+                            },
+                            {
+                                "title": "End Time", "data": "InterviewFinalTime", "searchable": false, "render": function (data, type, full, meta) {
+                                    var strDate = StringToDate(data)
+                                    return moment(strDate).format("YYYY-MM-DD HH:mm");
+                                }
+                            },
+                            { "title": "Candidate Id", "data": "CandidateId", "searchable": false },
+                            { "title": "Name", "data": "Candidate.CandidateName", "searchable": false },
+                            { "title": "Email", "data": "Candidate.CandidateEmail", "searchable": false },
+                            { "title": "Phone", "data": "Candidate.Phone", "searchable": false },
+                            { "title": "Phone", "data": "Candidate.Phone", "searchable": false },
+                            { "title": "Tecnology Detail", "data": "TechnologyDetail.TechnologyDescription", "searchable": false },
+                            { "title": "Tecnology", "data": "TechnologyDetail.Technology.TechnologyDescription", "searchable": false },
+
+                        ]
+
+                    });
+                    tableVM = table;
+                },
+                refresh: function () {
+                    //Refresh data
+                    table.ajax.reload();
+                }
+            }
+
+            interviewVM.init();
+
+        })
+
+        ///Inicializa los valores de formulario
+        ///Carga datos en combos
+        ///Carga calendarios
+        function InitFormInterViewModal()
+        {
+            CreateCalendarInterView();
+            LoadTypeInterViewDrop();
+            Search();
+            ShowModalSearch();
+
+        }
+        ///Convierte un string con este formato /Date(1597029720000)/ a Date
+        function StringToDate(dateStr)
+        {
+            var date = new Date(parseInt(dateStr.replace("/Date(", "").replace(")/", ""), 10));
+            return date;
+        }
+
+        //Carga el drop con los datos de los tipos de entrevistas de la base de datos
+        function LoadTypeInterViewDrop()
+        {
+            $.ajax({
+                url: "@Url.Action("GetInterviewTypes", "Interview")",
+                dataType: 'json',
+                type: 'GET',
+                success: function (response) {
+
+                    if (response)
+                    {
+                        var options = "";
+                        $.each(response, function (key, value) {
+                            options += '<option value="' + value.TypeInterviewId + '">' + value.TypeInterviewDescripction + '</option>';
+                        });
+                        $("#TypeInterviewId").html(options);
+                    }
+
+                },
+                error: function (x, e) {
+                    console.log(e);
+                    ShowMessageErrorModal("Error load drop type Interview");
+                }
+
+            });
+        }
+
+        ///Inicializar los calendarios de la entrevista
+        function CreateCalendarInterView()
+        {
+            var date = new Date();
+            $('#DateInterView').datetimepicker({
+                format: 'Y-m-d',
+                timepicker: false
+            });
+
+            var dateStr = moment(date).format("YYYY-MM-DD");
+            $('#DateInterView').val(dateStr);
+        }
+
+        ///Muesta un mensaje de error en una ventana modal
+        function ShowMessageErrorModal(mensaje) {
+            $("#pmesage").html(mensaje);
+            $("#modalMessage").modal()
+        }
+
+        ///Limpia el mensaje de error de la ventana modal
+        function CleaningErrorModal() {
+            ShowMessageErrorModal("");
+        }
+
+        ///Muestra el candidato en la ventana modal para editarlo
+        function ShowModalSearch()
+        {
+            $("#bttnSearchModal").click(function ()
+            {
+                $("#modalInterView").modal()
+            });
+
+        }
+
+        function Search()
+        {
+            $('#bttnSearch').click(function ()
+            {
+                interviewVM.refresh();
+                $("#modalInterView").modal('hide');
+            });
+        }
+
+        ///Convierte un date a string
+        function ConvertDateToString(date, format) {
+            var strValue = "";
+            if (date instanceof Date)
+            {
+                strValue = moment(date).format(format);
+            }
+            if (typeof date === 'string')
+            {
+                var newdate = moment(date);
+                strValue = newdate.format(format);
+            }
+
+            return strValue;
+        }
+    </script>
+}

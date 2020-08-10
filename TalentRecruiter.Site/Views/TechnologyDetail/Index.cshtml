@@ -1,0 +1,140 @@
+﻿@model TalentRecruiter.Site.Models.TechnologyDetailViewModel
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-primary list-panel" id="list-panel">
+            <div class="panel-heading list-panel-heading">
+                <h1 class="panel-title list-panel-title">Tecnologies Detail</h1>
+            </div>
+            <div class="panel-body">
+                <table id="assets-data-table" class="table table-striped table-bordered" style="width:100%;">
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button type="button" class="btn btn-link" id="bttnBack">Atras</button>
+
+<!-- Objetos para guardar los datos seleccionados de la vista anterior Technology  -->
+
+@Html.HiddenFor(model => model.TechnologyDescription)
+@Html.HiddenFor(model => model.TechnologyId)
+
+@section Scripts
+{
+
+    <script type="text/javascript">
+        var technologiesVM;
+        var tableVM;
+
+        $(document).ready(function () {
+
+            //VM para la creacion de la grilla
+            technologiesVM = {
+                table: null,
+
+                init: function () {
+                    table = $('#assets-data-table').DataTable({
+                        "bPaginate": false,
+                        "bFilter": false,
+                        "serverSide": true,
+                        "processing": true,
+                        "ajax": {
+                            "url": "@Url.Action("GetTechnologiesFromByTechnologyId", "TechnologyDetail")",
+                            "data": function (data)
+                            {
+
+                                //Descripcion de la tecnologia seleccionada en la vista anterior
+                                var technologyDescription = $("#TechnologyDescription").val();
+                                //Id de la tecnologia seleccionada en la vista anterior
+                                var technologyId = $("#TechnologyId").val();
+
+                                //Guarda los datos en el modelo para volver a consultar sobre la tecnologia seleccionada
+                                //en la vista anterior
+                                data.TechnologyDescription = technologyDescription;
+                                data.TechnologyId = technologyId;
+                            }
+                        },
+                        select: {
+                            style: 'os',
+                            selector: 'td:first-child'
+                        },
+
+                        "columns": [
+                            {
+                                "orderable": false,
+                                "title": "Seleccionar",
+                                "data": "TechnologyOrderId",
+                                "className": 'select-checkbox',
+                                "targets": 0,
+                                "render": function (data, type, full, meta) {
+                                    return "";
+                                }
+                            },
+                            { "title": "Id", "data": "TechnologyDetailId", "visible": false, "searchable": false },
+                            { "title": "Identificador Tec.", "data": "TechnologyOrderId", "searchable": false },
+                            { "title": "Description", "data": "TechnologyDescription", "searchable": false }
+                        ]
+                    });
+
+                    tableVM = table;
+                },
+
+                refresh: function () {
+                    table.ajax.reload();
+                }
+            }
+
+            //Inicia la carga de la grilla
+            technologiesVM.init();
+
+            ///Boton Atras redirecciona a la ventana de tecnologias
+            EventBackPage();
+
+            // Evento grid select
+            EventGridSelect();
+
+        });
+
+         ///Boton Atras redirecciona a la ventana de tecnologias
+        function EventBackPage()
+        {
+            ///Boton Atras redirecciona a la ventana de tecnologias
+            $("#bttnBack").click(function ()
+            {
+                window.location = "@Url.Action("Index", "Technology")";
+            });
+        }
+
+        ///Evento para redireccionar a la pagina de candidatos con los datos
+        ///de la tecnologia seleccionada en esta vista
+        function EventSeleccionarTecnologia(technologyOrderId, technologyId, technologyDetailId, technologyDetailDescription)
+        {
+            window.location = "@Url.Action("Index", "Candidate")" + "?technologyOrderId=" + technologyOrderId + "&technologyId=" + technologyId + "&technologyDetailId=" + technologyDetailId + "&technologyDetailDescription=" + technologyDetailDescription ;
+        }
+
+        ///Evento grid select
+        function EventGridSelect()
+        {
+            tableVM.on('select', function (e, table, type, indexes) {
+                if (type === 'row') {
+                    var technologySelect = table.rows(indexes).data();
+                    //Id de la tecnologia JAVA o NET
+                    var technologyId = $("#TechnologyId").val();
+                    //Identificador de la tecnologia para par o impar
+                    var technologyOrderId = technologySelect[0].TechnologyOrderId;
+                    //Id detalle de la tecnologia seleccionada en esta vista
+                    var technologyDetailId = technologySelect[0].TechnologyDetailId;
+                    //Descripcion de la tecnologia seleccionada en esta vista
+                    var technologyDetailDescription = technologySelect[0].TechnologyDescription;
+                    EventSeleccionarTecnologia(technologyOrderId, technologyId, technologyDetailId, technologyDetailDescription);
+
+                }
+            });
+        }
+    </script>
+}

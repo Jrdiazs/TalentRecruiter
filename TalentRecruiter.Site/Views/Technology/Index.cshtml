@@ -1,0 +1,101 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-primary list-panel" technologyId="list-panel">
+            <div class="panel-heading list-panel-heading">
+                <h1 class="panel-title list-panel-title">Tecnologies</h1>
+            </div>
+            <div class="panel-body">
+
+                <table id="assets-data-table" class="table table-striped table-bordered" style="width:100%;">
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+
+    <script type="text/javascript">
+        var technologiesVM;
+        var tableVM;
+
+        $(document).ready(function ()
+        {
+
+            ///VM para la tabla de tecnologias
+            technologiesVM = {
+                table :null,
+                init: function () {
+                    table = $('#assets-data-table').DataTable({
+                        "bPaginate": false,
+                        "bFilter": false,
+                        "serverSide": true,
+                        "processing": true,
+                        "ajax": {
+                            "url": "@Url.Action("GetTechnologies", "Technology")",
+                            "data": function (data) {
+
+                            }
+                        },
+                        select: {
+                            style: 'os',
+                            selector: 'td:first-child'
+                        },
+                        "columns": [
+                            {
+                                "orderable": false,
+                                "title": "Seleccionar",
+                                "data":"TechnologyId",
+                                "className": 'select-checkbox',
+                                "targets": 0,
+                                "render": function (data, type, full, meta) {
+                                    return "";
+                                }
+                            },
+                            { "title": "Id", "data": "TechnologyId", "searchable": false },
+                            { "title": "Description", "data": "TechnologyDescription", "searchable": false }
+
+                        ],
+                        "lengthMenu": [[10, 50, 100], [10, 50, 100]],
+                    });
+                    tableVM = table;
+                },
+                refresh: function () {
+                    //Refresh data
+                    table.ajax.reload();
+                }
+            }
+            //Inicicia la carga de la grilla
+            technologiesVM.init();
+            //Evento para la seleccion de la tecnologia
+            EventGridSelect();
+
+        })
+        //Evento para la seleccion de la tecnologia
+        function EventGridSelect()
+        {
+            tableVM.on('select', function (e, tableTechnologies, type, indexes) {
+                if (type === 'row') {
+                    var technologySelect = tableTechnologies.rows(indexes).data();
+                    var technologyId = technologySelect[0].TechnologyId;
+                    var technologyDescription = technologySelect[0].TechnologyDescription;
+                    EventSeleccionarTecnologia(technologyId, technologyDescription);
+
+                }
+            });
+        }
+
+        /// Evento seleccion para redireccionar a la pagina de tecnologias detalle
+        /// envia el id de la tecnologia seleccionada y la descripcion tambien
+        function EventSeleccionarTecnologia(technologyId, technologyDescription)
+        {
+            window.location = "@Url.Action("Index", "TechnologyDetail")" + "?technologyId=" + technologyId + "&technologyDescription=" + technologyDescription;
+        }
+    </script>
+
+}

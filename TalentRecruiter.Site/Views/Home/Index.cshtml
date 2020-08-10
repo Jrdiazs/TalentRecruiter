@@ -1,0 +1,134 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div class="jumbotron">
+    <h1>ASP.NET</h1>
+    <p class="lead">ASP.NET is a free web framework for building great Web sites and Web applications using HTML, CSS and JavaScript.</p>
+    <p><a href="https://asp.net" class="btn btn-primary btn-lg">Learn more &raquo;</a></p>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <h2>Getting started</h2>
+        <p>
+            ASP.NET MVC gives you a powerful, patterns-based way to build dynamic websites that
+            enables a clean separation of concerns and gives you full control over markup
+            for enjoyable, agile development.
+        </p>
+        <p><a class="btn btn-default" href="https://go.microsoft.com/fwlink/?LinkId=301865">Learn more &raquo;</a></p>
+    </div>
+    <div class="col-md-4">
+        <h2>Get more libraries</h2>
+        <p>NuGet is a free Visual Studio extension that makes it easy to add, remove, and update libraries and tools in Visual Studio projects.</p>
+        <p><a class="btn btn-default" href="https://go.microsoft.com/fwlink/?LinkId=301866">Learn more &raquo;</a></p>
+    </div>
+    <div class="col-md-4">
+        <h2>Web Hosting</h2>
+        <p>You can easily find a web hosting company that offers the right mix of features and price for your applications.</p>
+        <p><a class="btn btn-default" href="https://go.microsoft.com/fwlink/?LinkId=301867">Learn more &raquo;</a></p>
+    </div>
+</div>
+
+<table id="example" class="display" cellspacing="0" width="100%">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tfoot>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+        </tr>
+    </tfoot>
+</table>
+@section Scripts
+{
+    <script type="text/javascript">
+        var editor; // use a global for the submit and return data rendering in the examples
+
+        $(document).ready(function () {
+            // Object that will contain the local state
+            var todo = {};
+
+            // Create or update the todo localStorage entry
+            if (localStorage.getItem('todo')) {
+                todo = JSON.parse(localStorage.getItem('todo'));
+            }
+
+            // Set up the editor
+            editor = new $.fn.dataTable.Editor({
+                table: "#example",
+                fields: [
+                    {
+                        label: "Item:",
+                        name: "item"
+                    }, {
+                        label: "Status:",
+                        name: "status",
+                        type: "radio",
+                        def: "To do",
+                        options: ['To do', 'Done']
+                    }
+                ],
+                ajax: function (method, url, d, successCallback, errorCallback) {
+                    var output = { data: [] };
+
+                    if (d.action === 'create') {
+                        // Create new row(s), using the current time and loop index as
+                        // the row id
+                        var dateKey = +new Date();
+
+                        $.each(d.data, function (key, value) {
+                            var id = dateKey + '' + key;
+
+                            value.DT_RowId = id;
+                            todo[id] = value;
+                            output.data.push(value);
+                        });
+                    }
+                    else if (d.action === 'edit') {
+                        // Update each edited item with the data submitted
+                        $.each(d.data, function (id, value) {
+                            value.DT_RowId = id;
+                            $.extend(todo[id], value);
+                            output.data.push(todo[id]);
+                        });
+                    }
+                    else if (d.action === 'remove') {
+                        // Remove items from the object
+                        $.each(d.data, function (id) {
+                            delete todo[id];
+                        });
+                    }
+
+                    // Store the latest `todo` object for next reload
+                    localStorage.setItem('todo', JSON.stringify(todo));
+
+                    // Show Editor what has changed
+                    successCallback(output);
+                }
+            });
+
+            // Initialise the DataTable
+            $('#example').DataTable({
+                dom: "Bfrtip",
+                data: $.map(todo, function (value, key) {
+                    return value;
+                }),
+                columns: [
+                    { data: "item" },
+                    { data: "status" }
+                ],
+                select: true,
+                buttons: [
+                    { extend: "create", editor: editor },
+                    { extend: "edit", editor: editor },
+                    { extend: "remove", editor: editor }
+                ]
+            });
+        });
+    </script>
+}
